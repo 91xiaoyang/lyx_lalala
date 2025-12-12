@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Sparkles, ContactShadows, Environment, Center, Stars } from '@react-three/drei';
 import * as THREE from 'three';
@@ -19,6 +19,7 @@ const PALETTE = {
   cookie: '#c19a6b',
   red: '#d00000',        // Deep Apple Red
   candyWhite: '#f1faee',
+  // Removed static blushRed, using dynamic color blending
 };
 
 // Ceramic Material Helper for that "Glossy Toy" look
@@ -223,7 +224,7 @@ const PeelRibbon = () => {
         <CeramicMaterial color={PALETTE.peelInner} roughness={0.35} />
       </mesh>
 
-      {/* Decorations */}
+      {/* Decorations - Distributed along the curve */}
       <RibbonDecoration curve={curve} t={0.10} type="star" />
       <RibbonDecoration curve={curve} t={0.22} type="cookie" />
       <RibbonDecoration curve={curve} t={0.35} type="bauble" color={PALETTE.red} />
@@ -236,23 +237,53 @@ const PeelRibbon = () => {
 };
 
 const RibbonDecoration = ({ curve, t, type, color = PALETTE.red }: any) => {
+  // Get point on curve
   const point = curve.getPointAt(t);
-  const ref = useRef<THREE.Group>(null);
+  
+  // Calculate outward normal vector
+  // This pushes the ornament to the outer edge of the ribbon
+  const offsetDir = useMemo(() => new THREE.Vector3(point.x, 0, point.z).normalize(), [point]);
+  
+  // FIXED: 
+  // 1. Reduced scalar from 0.38 to 0.22. 
+  //    Ribbon width is 0.7 (edge at 0.35). 0.22 ensures the string comes out OF the ribbon surface,
+  //    not floating in air.
+  // 2. 0.22 is also chosen to avoid hitting the ribbon loop directly below (which starts approx 0.28 units out).
+  const pos = useMemo(() => point.clone().add(offsetDir.multiplyScalar(0.22)), [point, offsetDir]);
+
+  const groupRef = useRef<THREE.Group>(null);
+  
+  // Random phase to make swings asynchronous
+  const randomPhase = useMemo(() => Math.random() * 100, []);
 
   useFrame((state) => {
-    if (ref.current) {
-        ref.current.rotation.z = Math.sin(state.clock.elapsedTime * 2 + t * 10) * 0.1;
+    if (groupRef.current) {
+      const time = state.clock.elapsedTime;
+      // Compound Pendulum Swing
+      const swingX = Math.sin(time * 2.5 + randomPhase) * 0.15; 
+      const swingZ = Math.cos(time * 2.0 + randomPhase) * 0.1;
+      
+      groupRef.current.rotation.x = swingX;
+      groupRef.current.rotation.z = swingZ;
     }
   });
 
   return (
-    <group position={[point.x, point.y, point.z]}>
-      <mesh position={[0, -0.1, 0]}>
-        <cylinderGeometry args={[0.02, 0.02, 0.3]} />
-        <meshBasicMaterial color="#ddd" />
+    <group position={[pos.x, pos.y, pos.z]} ref={groupRef}>
+      {/* Connector: Small clay blob to visually attach string to ribbon */}
+      <mesh position={[0, 0, 0]}>
+         <sphereGeometry args={[0.04]} />
+         <CeramicMaterial color="#e5e7eb" />
+      </mesh>
+
+      {/* The String hanging from the ribbon edge */}
+      <mesh position={[0, -0.15, 0]}>
+        <cylinderGeometry args={[0.015, 0.015, 0.3]} />
+        <meshBasicMaterial color="#e5e7eb" /> 
       </mesh>
       
-      <group position={[0, -0.4, 0]} ref={ref} scale={0.8}>
+      {/* The Ornament Hanging at the end of the string */}
+      <group position={[0, -0.3, 0]} scale={0.8}>
         {type === 'star' && (
            <mesh castShadow rotation={[0, 0, Math.PI/5]}>
              <cylinderGeometry args={[0.3, 0.3, 0.08, 5]} />
@@ -262,7 +293,6 @@ const RibbonDecoration = ({ curve, t, type, color = PALETTE.red }: any) => {
         
         {type === 'bauble' && (
             <mesh castShadow>
-                {/* OPTIMIZATION: Reduced sphere segments */}
                 <sphereGeometry args={[0.25, 24, 24]} />
                 <CeramicMaterial color={color} />
             </mesh>
@@ -329,8 +359,28 @@ const CalicoCat = () => {
   const tailRef = useRef<THREE.Group>(null);
   const leftArmRef = useRef<THREE.Group>(null);
   const rightArmRef = useRef<THREE.Group>(null);
+  
+  // Interactive Blush State
+  const [isBlushing, setIsBlushing] = useState(false);
+  const blushTimeoutRef = useRef<any>(null);
 
-  useFrame((state) => {
+  // References for Cheek Animation
+  const leftCheekRef = useRef<THREE.Mesh>(null);
+  const rightCheekRef = useRef<THREE.Mesh>(null);
+  const currentBlush = useRef(0); // Value from 0 to 1
+
+  const handleHeadClick = (e: any) => {
+      e.stopPropagation(); // Prevent orbiting when clicking the cat
+      setIsBlushing(true);
+      
+      // Reset blushing after 2 seconds
+      if (blushTimeoutRef.current) clearTimeout(blushTimeoutRef.current);
+      blushTimeoutRef.current = setTimeout(() => {
+          setIsBlushing(false);
+      }, 2000);
+  };
+
+  useFrame((state, delta) => {
     const t = state.clock.elapsedTime;
     
     // Head Tracking + Bobbing
@@ -365,6 +415,35 @@ const CalicoCat = () => {
        // Gentle wave/adjusting grip
        leftArmRef.current.rotation.z = 2.5 + Math.sin(t * 2.5) * 0.15;
     }
+
+    // --- SMOOTH BLUSH ANIMATION ---
+    const targetBlush = isBlushing ? 1 : 0;
+    // Lerp current blush value towards target. Factor * delta controls speed.
+    currentBlush.current = THREE.MathUtils.lerp(currentBlush.current, targetBlush, delta * 3.0);
+
+    // Calculate interpolated values
+    const blushScale = 1.0 + currentBlush.current * 0.2; // Scale 1.0 -> 1.2
+    const blushOpacity = 0.2 + currentBlush.current * 0.6; // Opacity 0.2 -> 0.8
+    
+    // Color Interpolation: Pale Pink -> Meat/Rose Pink
+    const baseColor = new THREE.Color("#ffb7b2"); 
+    const flushColor = new THREE.Color("#ff80ab"); // A nice soft "meat pink" / rose
+    const currentColor = baseColor.clone().lerp(flushColor, currentBlush.current);
+
+    // Apply to Left Cheek
+    if (leftCheekRef.current) {
+        leftCheekRef.current.scale.setScalar(blushScale);
+        const mat = leftCheekRef.current.material as THREE.MeshBasicMaterial;
+        mat.color = currentColor;
+        mat.opacity = blushOpacity;
+    }
+    // Apply to Right Cheek
+    if (rightCheekRef.current) {
+        rightCheekRef.current.scale.setScalar(blushScale);
+        const mat = rightCheekRef.current.material as THREE.MeshBasicMaterial;
+        mat.color = currentColor;
+        mat.opacity = blushOpacity;
+    }
   });
 
   return (
@@ -386,8 +465,8 @@ const CalicoCat = () => {
         </mesh>
       </group>
 
-      {/* Head */}
-      <group position={[0, 1.35, 0]} ref={headRef}>
+      {/* Head - Added Click Handler */}
+      <group position={[0, 1.35, 0]} ref={headRef} onClick={handleHeadClick} onPointerOver={() => document.body.style.cursor = 'pointer'} onPointerOut={() => document.body.style.cursor = 'auto'}>
           <mesh castShadow>
             {/* OPTIMIZATION: Reduced head segments 32 -> 24 */}
             <sphereGeometry args={[0.9, 24, 24]} />
@@ -444,13 +523,23 @@ const CalicoCat = () => {
                 <capsuleGeometry args={[0.02, 0.15]} />
                 <meshBasicMaterial color="#333" />
              </mesh>
-             <mesh position={[-0.45, -0.05, -0.05]}>
+             
+             {/* Cheeks - Interactive with Refs for Smooth Animation */}
+             <mesh ref={leftCheekRef} position={[-0.45, -0.05, -0.05]}>
                  <circleGeometry args={[0.12, 16]} />
-                 <meshBasicMaterial color="#ffb7b2" transparent opacity={0.4} />
+                 <meshBasicMaterial 
+                    color="#ffb7b2"
+                    transparent 
+                    opacity={0.4} 
+                 />
              </mesh>
-             <mesh position={[0.45, -0.05, -0.05]}>
+             <mesh ref={rightCheekRef} position={[0.45, -0.05, -0.05]}>
                  <circleGeometry args={[0.12, 16]} />
-                 <meshBasicMaterial color="#ffb7b2" transparent opacity={0.4} />
+                 <meshBasicMaterial 
+                    color="#ffb7b2" 
+                    transparent 
+                    opacity={0.4} 
+                 />
              </mesh>
           </group>
       </group>
@@ -515,12 +604,13 @@ const Floor = () => (
             <CeramicMaterial color={PALETTE.floorCeramic} roughness={0.1} metalness={0.2} />
         </mesh>
         
-        {/* Scattered Decor */}
-        <group position={[2.2, 0.55, 1]}>
+        {/* Scattered Decor - Fixed heights to prevent floating or clipping */}
+        {/* Adjusted Y from 0.2 to 0.6 to sit properly on top of the floor */}
+        <group position={[2.2, 0.6, 1]}>
              <MiniRedApple rotation={[0, 0, 0.2]} scale={0.7} />
         </group>
 
-        <group position={[1.5, 0.55, 2.0]}>
+        <group position={[1.5, 0.6, 2.0]}>
              <MiniRedApple rotation={[0, 0, -0.2]} scale={0.65} />
         </group>
         
@@ -672,8 +762,16 @@ const Snow = () => {
 // --- Main Scene ---
 
 export const CatTreeScene = () => {
+  // Mobile check for better initial camera positioning
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  // Responsive camera config
+  const cameraProps = isMobile 
+    ? { position: [0, 0.5, 14], fov: 55 } // Mobile: Lower, further back, wider angle
+    : { position: [0, 2, 11], fov: 45 };  // Desktop: Standard
+
   return (
-    <Canvas shadows camera={{ position: [0, 2, 11], fov: 45 }} dpr={[1, 2]}>
+    <Canvas shadows camera={cameraProps} dpr={[1, 2]}>
       {/* Deep Midnight Blue Background */}
       <color attach="background" args={['#0b1026']} />
       
