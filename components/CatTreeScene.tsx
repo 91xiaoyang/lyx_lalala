@@ -51,7 +51,8 @@ const AppleGeometry = ({ scale = 1 }: { scale?: number }) => {
     points.push(new THREE.Vector2(0.2, -0.75)); // Bottom dimple start
     points.push(new THREE.Vector2(0, -0.65));   // Bottom center (dip)
     
-    const geom = new THREE.LatheGeometry(points, 32);
+    // OPTIMIZATION: Reduced segments from 32 to 20 for mobile
+    const geom = new THREE.LatheGeometry(points, 20);
     geom.computeVertexNormals();
     return geom;
   }, []);
@@ -73,7 +74,7 @@ const GreenAppleTop = () => {
       
       {/* Stem */}
       <mesh position={[0, 0.6, 0]} rotation={[0.1, 0, 0.2]}>
-        <cylinderGeometry args={[0.03, 0.05, 0.5, 8]} />
+        <cylinderGeometry args={[0.03, 0.05, 0.5, 6]} />
         <CeramicMaterial color="#3e2723" roughness={0.8} />
       </mesh>
       
@@ -122,8 +123,9 @@ const PeelRibbon = () => {
     const startY = 3.5;
     const endY = -1.0; 
 
-    for (let i = 0; i <= 100; i++) {
-      const t = i / 100;
+    // OPTIMIZATION: Reduced steps from 100 to 70
+    for (let i = 0; i <= 70; i++) {
+      const t = i / 70;
       const angle = t * Math.PI * 2 * loops;
       
       // Add a tiny bit of random noise to the path for "handmade" feel
@@ -202,7 +204,8 @@ const PeelRibbon = () => {
         <extrudeGeometry
           args={[
             shapeOuter,
-            { extrudePath: curve, steps: 120, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 3 },
+            // OPTIMIZATION: Reduced steps and bevel segments
+            { extrudePath: curve, steps: 70, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2 },
           ]}
         />
         <CeramicMaterial color={PALETTE.peelOuter} roughness={0.3} />
@@ -213,7 +216,7 @@ const PeelRibbon = () => {
         <extrudeGeometry
           args={[
             shapeInner,
-            { extrudePath: curve, steps: 120, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 3 },
+            { extrudePath: curve, steps: 70, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2 },
           ]}
         />
         <CeramicMaterial color={PALETTE.peelInner} roughness={0.35} />
@@ -258,7 +261,8 @@ const RibbonDecoration = ({ curve, t, type, color = PALETTE.red }: any) => {
         
         {type === 'bauble' && (
             <mesh castShadow>
-                <sphereGeometry args={[0.25, 32, 32]} />
+                {/* OPTIMIZATION: Reduced sphere segments */}
+                <sphereGeometry args={[0.25, 24, 24]} />
                 <CeramicMaterial color={color} />
             </mesh>
         )}
@@ -266,7 +270,7 @@ const RibbonDecoration = ({ curve, t, type, color = PALETTE.red }: any) => {
         {type === 'cookie' && (
             <group rotation={[Math.PI/2, 0, 0]}>
                 <mesh castShadow>
-                    <cylinderGeometry args={[0.25, 0.25, 0.05, 32]} />
+                    <cylinderGeometry args={[0.25, 0.25, 0.05, 24]} />
                     <CeramicMaterial color={PALETTE.cookie} roughness={0.4} />
                 </mesh>
                 <mesh position={[0.1, 0.03, 0.1]}>
@@ -283,11 +287,11 @@ const RibbonDecoration = ({ curve, t, type, color = PALETTE.red }: any) => {
         {type === 'santaHat' && (
             <group rotation={[0, 0, 0.2]}>
                 <mesh position={[0, 0.2, 0]}>
-                    <coneGeometry args={[0.25, 0.5, 32]} />
+                    <coneGeometry args={[0.25, 0.5, 24]} />
                     <CeramicMaterial color={PALETTE.red} />
                 </mesh>
                 <mesh position={[0, -0.05, 0]}>
-                    <torusGeometry args={[0.25, 0.08, 16, 32]} />
+                    <torusGeometry args={[0.25, 0.08, 12, 24]} />
                     <CeramicMaterial color="white" roughness={0.5} />
                 </mesh>
                 <mesh position={[0, 0.45, 0]}>
@@ -300,15 +304,15 @@ const RibbonDecoration = ({ curve, t, type, color = PALETTE.red }: any) => {
         {type === 'candy' && (
             <group rotation={[0, 0, Math.PI / 4]}>
                 <mesh>
-                    <capsuleGeometry args={[0.15, 0.4, 4, 16]} />
+                    <capsuleGeometry args={[0.15, 0.4, 4, 12]} />
                     <CeramicMaterial color={PALETTE.candyWhite} />
                 </mesh>
                 <mesh position={[0, 0.25, 0]}>
-                     <torusGeometry args={[0.05, 0.02, 8, 16]} />
+                     <torusGeometry args={[0.05, 0.02, 8, 12]} />
                      <CeramicMaterial color={PALETTE.red} />
                 </mesh>
                 <mesh position={[0, -0.25, 0]}>
-                     <torusGeometry args={[0.05, 0.02, 8, 16]} />
+                     <torusGeometry args={[0.05, 0.02, 8, 12]} />
                      <CeramicMaterial color={PALETTE.red} />
                 </mesh>
             </group>
@@ -371,11 +375,12 @@ const CalicoCat = () => {
           <CeramicMaterial color={PALETTE.catWhite} />
         </mesh>
         <mesh position={[0.4, 0.6, -0.3]} rotation={[0,0,-0.2]}>
-           <sphereGeometry args={[0.45, 16, 16]} />
+           {/* OPTIMIZATION: Reduced segments 16 -> 12/16 */}
+           <sphereGeometry args={[0.45, 16, 12]} />
            <CeramicMaterial color={PALETTE.catOrange} />
         </mesh>
         <mesh position={[-0.4, 0.4, 0.2]}>
-           <sphereGeometry args={[0.35, 16, 16]} />
+           <sphereGeometry args={[0.35, 16, 12]} />
            <CeramicMaterial color={PALETTE.catGrey} />
         </mesh>
       </group>
@@ -383,7 +388,8 @@ const CalicoCat = () => {
       {/* Head */}
       <group position={[0, 1.35, 0]} ref={headRef}>
           <mesh castShadow>
-            <sphereGeometry args={[0.9, 32, 32]} />
+            {/* OPTIMIZATION: Reduced head segments 32 -> 24 */}
+            <sphereGeometry args={[0.9, 24, 24]} />
             <CeramicMaterial color={PALETTE.catWhite} />
           </mesh>
           <mesh position={[-0.4, 0.4, 0.5]}>
@@ -398,19 +404,19 @@ const CalicoCat = () => {
           {/* Ears */}
           <group position={[0, 0.75, 0]}>
              <mesh position={[-0.55, 0, 0]} rotation={[0, 0, 0.6]}>
-                 <coneGeometry args={[0.28, 0.6, 32]} />
+                 <coneGeometry args={[0.28, 0.6, 16]} />
                  <CeramicMaterial color={PALETTE.catWhite} />
              </mesh>
              <mesh position={[-0.55, -0.05, 0.05]} rotation={[0, 0, 0.6]}>
-                 <coneGeometry args={[0.18, 0.4, 32]} />
+                 <coneGeometry args={[0.18, 0.4, 16]} />
                  <meshStandardMaterial color={PALETTE.catEarPink} />
              </mesh>
              <mesh position={[0.55, 0, 0]} rotation={[0, 0, -0.6]}>
-                 <coneGeometry args={[0.28, 0.6, 32]} />
+                 <coneGeometry args={[0.28, 0.6, 16]} />
                  <CeramicMaterial color={PALETTE.catGrey} />
              </mesh>
              <mesh position={[0.55, -0.05, 0.05]} rotation={[0, 0, -0.6]}>
-                 <coneGeometry args={[0.18, 0.4, 32]} />
+                 <coneGeometry args={[0.18, 0.4, 16]} />
                  <meshStandardMaterial color={PALETTE.catEarPink} />
              </mesh>
           </group>
@@ -418,11 +424,11 @@ const CalicoCat = () => {
           {/* Face */}
           <group position={[0, 0.1, 0.82]}>
              <mesh position={[-0.28, 0.1, 0]}>
-                 <sphereGeometry args={[0.09, 32, 32]} />
+                 <sphereGeometry args={[0.09, 16, 16]} />
                  <CeramicMaterial color="#222" roughness={0.1} />
              </mesh>
              <mesh position={[0.28, 0.1, 0]}>
-                 <sphereGeometry args={[0.09, 32, 32]} />
+                 <sphereGeometry args={[0.09, 16, 16]} />
                  <CeramicMaterial color="#222" roughness={0.1} />
              </mesh>
              <mesh position={[0, 0, 0.05]}>
@@ -438,11 +444,11 @@ const CalicoCat = () => {
                 <meshBasicMaterial color="#333" />
              </mesh>
              <mesh position={[-0.45, -0.05, -0.05]}>
-                 <circleGeometry args={[0.12, 32]} />
+                 <circleGeometry args={[0.12, 16]} />
                  <meshBasicMaterial color="#ffb7b2" transparent opacity={0.4} />
              </mesh>
              <mesh position={[0.45, -0.05, -0.05]}>
-                 <circleGeometry args={[0.12, 32]} />
+                 <circleGeometry args={[0.12, 16]} />
                  <meshBasicMaterial color="#ffb7b2" transparent opacity={0.4} />
              </mesh>
           </group>
@@ -502,13 +508,13 @@ const CalicoCat = () => {
 
 const Floor = () => (
     <group position={[0, -2, 0]}>
-         {/* Main ceramic base - Darker, High Gloss */}
+         {/* Main ceramic base - Reduced segments for mobile */}
         <mesh receiveShadow position={[0, -0.1, 0]}>
-            <cylinderGeometry args={[3.8, 4.0, 0.25, 64]} />
+            <cylinderGeometry args={[3.8, 4.0, 0.25, 48]} />
             <CeramicMaterial color={PALETTE.floorCeramic} roughness={0.1} metalness={0.2} />
         </mesh>
         
-        {/* Scattered Decor: Lifted Y position to fix clipping (0.2 -> 0.55) */}
+        {/* Scattered Decor */}
         <group position={[2.2, 0.55, 1]}>
              <MiniRedApple rotation={[0, 0, 0.2]} scale={0.7} />
         </group>
@@ -520,15 +526,15 @@ const Floor = () => (
         {/* Candy on floor */}
         <group position={[-1.2, 0.25, 1.8]} rotation={[0, 0.5, 1.57]}>
             <mesh>
-                 <capsuleGeometry args={[0.2, 0.5, 4, 16]} />
+                 <capsuleGeometry args={[0.2, 0.5, 4, 12]} />
                  <CeramicMaterial color={PALETTE.candyWhite} />
             </mesh>
             <mesh position={[0, 0.3, 0]}>
-                 <torusGeometry args={[0.06, 0.025, 8, 16]} />
+                 <torusGeometry args={[0.06, 0.025, 8, 12]} />
                  <CeramicMaterial color={PALETTE.red} />
             </mesh>
             <mesh position={[0, -0.3, 0]}>
-                 <torusGeometry args={[0.06, 0.025, 8, 16]} />
+                 <torusGeometry args={[0.06, 0.025, 8, 12]} />
                  <CeramicMaterial color={PALETTE.red} />
             </mesh>
         </group>
@@ -539,7 +545,7 @@ const Floor = () => (
                  <CeramicMaterial color={PALETTE.red} />
              </mesh>
              <mesh position={[0, 0.31, 0]} rotation={[0,0,0]}>
-                 <cylinderGeometry args={[0.12, 0.12, 0.6, 16]} rotation={[0,0,Math.PI/2]} />
+                 <cylinderGeometry args={[0.12, 0.12, 0.6, 12]} rotation={[0,0,Math.PI/2]} />
                  <CeramicMaterial color={PALETTE.star} />
              </mesh>
         </group>
@@ -550,7 +556,7 @@ const SnowBase = () => {
     // A soft fading disc under the floor to blend it into the dark background
     return (
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2.05, 0]}>
-        <circleGeometry args={[8, 64]} />
+        <circleGeometry args={[8, 32]} />
         <shaderMaterial
           transparent
           depthWrite={false}
@@ -571,12 +577,8 @@ const SnowBase = () => {
             uniform vec3 centerColor;
             void main() {
               float dist = distance(vUv, vec2(0.5));
-              // Create a soft gradient from center (0) to edge (0.5)
               float alpha = 1.0 - smoothstep(0.1, 0.5, dist);
-              
-              // Fade color slightly towards the edge color before transparency kicks in fully
               vec3 finalColor = mix(centerColor, color, dist * 2.0);
-              
               gl_FragColor = vec4(finalColor, alpha * 0.8); 
             }
           `}
@@ -595,13 +597,73 @@ const RotatingTree = ({ children }: { children?: React.ReactNode }) => {
     return <group ref={ref}>{children}</group>;
 }
 
+// Efficient Instanced Falling Snow
+const DriftingSnow = ({ count = 60 }) => {
+  const mesh = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  
+  // Store initial positions and randomized properties
+  const particles = useMemo(() => {
+    return new Array(count).fill(0).map(() => ({
+      position: new THREE.Vector3(
+        (Math.random() - 0.5) * 15, // Range X
+        Math.random() * 12 + 2,     // Start Y
+        (Math.random() - 0.5) * 15  // Range Z
+      ),
+      speed: 0.01 + Math.random() * 0.04,
+      driftOffset: Math.random() * Math.PI * 2,
+      scale: 0.2 + Math.random() * 0.4
+    }));
+  }, [count]);
+
+  useFrame((state) => {
+    if(!mesh.current) return;
+    const time = state.clock.getElapsedTime();
+    
+    particles.forEach((p, i) => {
+      // Fall down
+      p.position.y -= p.speed;
+      
+      // Drift sideways
+      const driftX = Math.sin(time * 0.5 + p.driftOffset) * 0.02;
+      const driftZ = Math.cos(time * 0.3 + p.driftOffset) * 0.02;
+      p.position.x += driftX;
+      p.position.z += driftZ;
+
+      // Reset if below floor (approx -2)
+      if (p.position.y < -3) {
+        p.position.y = 10;
+        p.position.x = (Math.random() - 0.5) * 15;
+        p.position.z = (Math.random() - 0.5) * 15;
+      }
+
+      dummy.position.copy(p.position);
+      dummy.scale.setScalar(p.scale);
+      dummy.rotation.set(time + p.driftOffset, time * 0.5, 0); 
+      dummy.updateMatrix();
+      mesh.current.setMatrixAt(i, dummy.matrix);
+    });
+    mesh.current.instanceMatrix.needsUpdate = true;
+  });
+
+  return (
+    <instancedMesh ref={mesh} args={[undefined, undefined, count]}>
+      {/* Low poly circle (essentially a hexagon) for efficiency */}
+      <circleGeometry args={[0.1, 6]} /> 
+      <meshBasicMaterial color="#ffffff" transparent opacity={0.6} depthWrite={false} />
+    </instancedMesh>
+  )
+}
+
 const Snow = () => {
     return (
         <group>
-            {/* Fine background glow/dust */}
-            <Sparkles count={200} scale={[15, 10, 15]} size={3} speed={0.3} opacity={0.5} color="#ffffff" />
-            {/* Larger glowing flakes drifting */}
-            <Sparkles count={80} scale={[12, 12, 12]} size={8} speed={0.6} opacity={0.8} color="#e0f7fa" noise={2} />
+            {/* Drifting Snowflakes (Physical falling motion) */}
+            <DriftingSnow count={80} />
+            
+            {/* Ambient Sparkles (Background glisten) - Reduced count for mobile */}
+            <Sparkles count={60} scale={[15, 10, 15]} size={3} speed={0.3} opacity={0.4} color="#ffffff" />
+            <Sparkles count={20} scale={[12, 12, 12]} size={8} speed={0.6} opacity={0.6} color="#e0f7fa" noise={2} />
         </group>
     )
 }
@@ -620,7 +682,8 @@ export const CatTreeScene = () => {
         position={[3, 8, 5]} 
         intensity={1.5} 
         castShadow 
-        shadow-mapSize={[2048, 2048]}
+        // OPTIMIZATION: Reduced shadow map size for mobile (1024 is decent balance)
+        shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0001}
       />
       {/* Rim light for drama */}
@@ -629,7 +692,8 @@ export const CatTreeScene = () => {
       <pointLight position={[0, 1, 3]} intensity={0.5} color="#ffd1dc" />
       
       <Environment preset="night" />
-      <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+      {/* OPTIMIZATION: Reduced star count */}
+      <Stars radius={100} depth={50} count={2000} factor={4} saturation={0} fade speed={1} />
       
       <group position={[0, -0.5, 0]}>
         <Center>
