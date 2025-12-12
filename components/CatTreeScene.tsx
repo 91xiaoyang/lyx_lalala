@@ -1,6 +1,6 @@
-import React, { useMemo, useRef, useLayoutEffect } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Float, Sparkles, SoftShadows, ContactShadows, Environment, Center, useCursor, Stars } from '@react-three/drei';
+import { OrbitControls, Sparkles, ContactShadows, Environment, Center, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 
 // --- Palette & Materials ---
@@ -27,7 +27,7 @@ const CeramicMaterial = ({ color, roughness = 0.15, ...props }: { color: string,
     color={color} 
     roughness={roughness} 
     metalness={0.1} 
-    envMapIntensity={1.2}
+    envMapIntensity={1.0}
     {...props} 
   />
 );
@@ -51,8 +51,8 @@ const AppleGeometry = ({ scale = 1 }: { scale?: number }) => {
     points.push(new THREE.Vector2(0.2, -0.75)); // Bottom dimple start
     points.push(new THREE.Vector2(0, -0.65));   // Bottom center (dip)
     
-    // OPTIMIZATION: Reduced segments from 32 to 20 for mobile
-    const geom = new THREE.LatheGeometry(points, 20);
+    // OPTIMIZATION: Reduced segments from 32 to 16 for mobile safety
+    const geom = new THREE.LatheGeometry(points, 16);
     geom.computeVertexNormals();
     return geom;
   }, []);
@@ -123,9 +123,9 @@ const PeelRibbon = () => {
     const startY = 3.5;
     const endY = -1.0; 
 
-    // OPTIMIZATION: Reduced steps from 100 to 70
-    for (let i = 0; i <= 70; i++) {
-      const t = i / 70;
+    // OPTIMIZATION: Reduced steps for mobile
+    for (let i = 0; i <= 60; i++) {
+      const t = i / 60;
       const angle = t * Math.PI * 2 * loops;
       
       // Add a tiny bit of random noise to the path for "handmade" feel
@@ -172,7 +172,8 @@ const PeelRibbon = () => {
       pos.needsUpdate = true;
   };
 
-  useLayoutEffect(() => {
+  // Switch to useEffect to avoid blocking painting on slow devices
+  useEffect(() => {
       applyClayDistortion(outerRef.current);
       applyClayDistortion(innerRef.current);
   }, [curve]);
@@ -205,7 +206,7 @@ const PeelRibbon = () => {
           args={[
             shapeOuter,
             // OPTIMIZATION: Reduced steps and bevel segments
-            { extrudePath: curve, steps: 70, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2 },
+            { extrudePath: curve, steps: 60, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2 },
           ]}
         />
         <CeramicMaterial color={PALETTE.peelOuter} roughness={0.3} />
@@ -216,7 +217,7 @@ const PeelRibbon = () => {
         <extrudeGeometry
           args={[
             shapeInner,
-            { extrudePath: curve, steps: 70, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2 },
+            { extrudePath: curve, steps: 60, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2 },
           ]}
         />
         <CeramicMaterial color={PALETTE.peelInner} roughness={0.35} />
@@ -676,22 +677,39 @@ export const CatTreeScene = () => {
       {/* Deep Midnight Blue Background */}
       <color attach="background" args={['#0b1026']} />
       
-      {/* Lighting for Dark Mode */}
-      <ambientLight intensity={0.4} color="#ffffff" />
+      {/* Lighting for Dark Mode - Enhanced for lack of HDRI */}
+      <ambientLight intensity={0.6} color="#ffffff" />
       <directionalLight 
         position={[3, 8, 5]} 
-        intensity={1.5} 
+        intensity={1.8} 
         castShadow 
         // OPTIMIZATION: Reduced shadow map size for mobile (1024 is decent balance)
         shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0001}
       />
       {/* Rim light for drama */}
-      <spotLight position={[-5, 5, -5]} intensity={2.0} color="#b3e5fc" angle={0.6} penumbra={1} />
+      <spotLight position={[-5, 5, -5]} intensity={2.5} color="#b3e5fc" angle={0.6} penumbra={1} />
       {/* Warm fill */}
-      <pointLight position={[0, 1, 3]} intensity={0.5} color="#ffd1dc" />
+      <pointLight position={[0, 1, 3]} intensity={0.8} color="#ffd1dc" />
       
-      <Environment preset="night" />
+      {/* Synthetic Environment for reflections (No network request) */}
+      <Environment resolution={256}>
+        <group rotation={[-Math.PI / 4, -0.3, 0]}>
+            <mesh position={[0, 10, 5]} scale={5}>
+                <sphereGeometry />
+                <meshBasicMaterial color="#ffffff" />
+            </mesh>
+             <mesh position={[10, 0, -5]} scale={5}>
+                <sphereGeometry />
+                <meshBasicMaterial color="#ffd1dc" />
+            </mesh>
+             <mesh position={[-10, 5, 0]} scale={5}>
+                <sphereGeometry />
+                <meshBasicMaterial color="#b3e5fc" />
+            </mesh>
+        </group>
+      </Environment>
+
       {/* OPTIMIZATION: Reduced star count */}
       <Stars radius={100} depth={50} count={2000} factor={4} saturation={0} fade speed={1} />
       
